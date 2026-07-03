@@ -34,6 +34,7 @@ import com.example.tripreminder.data.statusAt
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.abs
 
 @Composable
 fun TripDetailsScreen(
@@ -102,6 +103,9 @@ fun TripDetailsScreen(
                 DetailRow(label = "Напомнить за", value = minutesText(trip.remindBeforeMinutes))
                 DetailRow(label = "Запас времени", value = "${trip.safetyPercent}% (${minutesText(trip.safetyMinutes)})")
                 DetailRow(label = "Транспорт", value = transportTitle(trip.transportMode))
+                if (trip.latitude != null && trip.longitude != null) {
+                    DetailRow(label = "Координаты", value = coordinatesText(trip.latitude, trip.longitude))
+                }
             }
         }
 
@@ -201,3 +205,15 @@ private fun minutesText(minutes: Int): String {
 
 private fun formatDateTime(millis: Long): String =
     SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.forLanguageTag("ru-RU")).format(Date(millis))
+
+private fun coordinatesText(latitude: Double, longitude: Double): String {
+    val latDirection = if (latitude >= 0) "с. ш." else "ю. ш."
+    val lonDirection = if (longitude >= 0) "в. д." else "з. д."
+    return "%.5f %s, %.5f %s".format(
+        Locale.forLanguageTag("ru-RU"),
+        abs(latitude),
+        latDirection,
+        abs(longitude),
+        lonDirection,
+    )
+}

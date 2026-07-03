@@ -22,6 +22,7 @@ import com.example.tripreminder.ui.startup.LoadingScreen
 import com.example.tripreminder.ui.theme.TripReminderTheme
 import com.example.tripreminder.ui.trips.TripDetailsScreen
 import com.example.tripreminder.ui.trips.TripListScreen
+import com.yandex.mapkit.MapKitFactory
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -82,6 +83,7 @@ class MainActivity : ComponentActivity() {
                             nextTripId += 1
                             isCreatingTrip = false
                         },
+                        placeSearchEnabled = BuildConfig.MAPKIT_API_KEY.isNotBlank(),
                     )
                     selectedTrip != null -> TripDetailsScreen(
                         trip = selectedTrip!!,
@@ -101,6 +103,20 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (BuildConfig.MAPKIT_API_KEY.isNotBlank()) {
+            MapKitFactory.getInstance().onStart()
+        }
+    }
+
+    override fun onStop() {
+        if (BuildConfig.MAPKIT_API_KEY.isNotBlank()) {
+            MapKitFactory.getInstance().onStop()
+        }
+        super.onStop()
     }
 }
 

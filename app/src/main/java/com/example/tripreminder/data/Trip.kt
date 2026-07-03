@@ -16,6 +16,8 @@ data class Trip(
     val routeDurationMinutes: Int,
     val remindBeforeMinutes: Int,
     val safetyPercent: Int = 10,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
 ) {
     val safetyMinutes: Int
         get() = (routeDurationMinutes * safetyPercent + 99) / 100

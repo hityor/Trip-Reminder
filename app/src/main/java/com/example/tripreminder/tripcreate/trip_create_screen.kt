@@ -35,10 +35,12 @@ import java.util.Calendar
 fun CreateScreen(
     onBack: () -> Unit,
     onTripCreated: (Trip) -> Unit,
+    placeSearchEnabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
     var tripName by remember { mutableStateOf("") }
     var place by remember { mutableStateOf("") }
+    var selectedPlace by remember { mutableStateOf<PlaceSearchResult?>(null) }
     var tripDate by remember { mutableStateOf(Calendar.getInstance()) }
     var tripTime by remember { mutableStateOf(Calendar.getInstance()) }
     var tripTransport by remember { mutableStateOf<TransportMode?>(null) }
@@ -46,7 +48,8 @@ fun CreateScreen(
     var remindBeforeMinutes by remember { mutableStateOf("15") }
     val parsedRouteDuration = routeDurationMinutes.toIntOrNull()
     val parsedRemindBefore = remindBeforeMinutes.toIntOrNull()
-    val canSave = place.isNotBlank() &&
+    val hasSelectedPlace = selectedPlace != null && place == selectedPlace?.address
+    val canSave = hasSelectedPlace &&
         tripTransport != null &&
         parsedRouteDuration != null &&
         parsedRouteDuration > 0 &&
@@ -91,14 +94,33 @@ fun CreateScreen(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        OutlinedTextField(
-            value = place,
-            onValueChange = { place = it },
-            label = { Text("Место назначения") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+        PlaceSearchField(
+            place = place,
+            onPlaceChange = { value ->
+                place = value
+                selectedPlace = null
+            },
+            onPlaceSelected = { result ->
+                selectedPlace = result
+            },
+            searchEnabled = placeSearchEnabled,
+            hasSelectedPlace = hasSelectedPlace,
             modifier = Modifier.fillMaxWidth(),
         )
+
+        if (!placeSearchEnabled) {
+            Text(
+                text = "Поиск мест выключен: не найден MAPKIT_API_KEY.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        } else if (place.isNotBlank() && !hasSelectedPlace) {
+            Text(
+                text = "Выбери место из найденных вариантов, чтобы сохранить координаты.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
         DateField(
             selectedDate = tripDate,
@@ -143,17 +165,20 @@ fun CreateScreen(
 
         Button(
             onClick = {
+                val destination = selectedPlace ?: return@Button
                 val transport = tripTransport ?: return@Button
                 val routeMinutes = parsedRouteDuration ?: return@Button
                 val remindMinutes = parsedRemindBefore ?: return@Button
                 onTripCreated(
                     Trip(
-                        place = place.trim(),
-                        name = tripName.trim().ifBlank { place.trim() },
+                        place = destination.address,
+                        name = tripName.trim().ifBlank { destination.address },
                         arrivalTimeMillis = arrivalTimeMillis(tripDate, tripTime),
                         transportMode = transport,
                         routeDurationMinutes = routeMinutes,
                         remindBeforeMinutes = remindMinutes,
+                        latitude = destination.latitude,
+                        longitude = destination.longitude,
                     ),
                 )
             },

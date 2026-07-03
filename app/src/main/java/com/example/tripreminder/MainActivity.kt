@@ -1,20 +1,29 @@
 package com.example.tripreminder
 
+import android.Manifest
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import com.example.tripreminder.data.TransportMode
 import com.example.tripreminder.data.Trip
+import com.example.tripreminder.notifications.TripNotificationScheduler
+import com.example.tripreminder.ui.startup.LoadingScreen
 import com.example.tripreminder.ui.theme.TripReminderTheme
 import com.example.tripreminder.ui.trips.TripListScreen
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,18 +33,56 @@ class MainActivity : ComponentActivity() {
         setContent {
             TripReminderTheme {
                 val nowMillis = remember { System.currentTimeMillis() }
-                var selectedTrip by remember { mutableStateOf<Trip?>(null) }
+                val trips = remember(nowMillis) { demoTrips(nowMillis) }
+                val context = LocalContext.current
+                val notificationScheduler = remember(context) {
+                    TripNotificationScheduler(context.applicationContext)
+                }
 
-                TripListScreen(
-                    trips = demoTrips(nowMillis),
-                    nowMillis = nowMillis,
-                    onAddTrip = {
-                        // Экран создания поездки подключит другой участник команды.
-                    },
-                    onTripClick = { trip ->
-                        selectedTrip = trip
-                    },
-                )
+                var isLoading by remember { mutableStateOf(true) }
+                var selectedTrip by remember { mutableStateOf<Trip?>(null) }
+                var notificationsAllowed by remember {
+                    mutableStateOf(notificationScheduler.canPostNotifications())
+                }
+
+                val notificationPermissionLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission(),
+                ) { granted ->
+                    notificationsAllowed = granted
+                }
+
+                LaunchedEffect(Unit) {
+                    notificationScheduler.createNotificationChannel()
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationsAllowed) {
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+
+                    delay(900)
+                    isLoading = false
+                }
+
+                LaunchedEffect(notificationsAllowed, trips) {
+                    if (notificationsAllowed) {
+                        notificationScheduler.showDueTripNotifications(trips, nowMillis)
+                        notificationScheduler.scheduleTripNotifications(trips, nowMillis)
+                    }
+                }
+
+                if (isLoading) {
+                    LoadingScreen()
+                } else {
+                    TripListScreen(
+                        trips = trips,
+                        nowMillis = nowMillis,
+                        onAddTrip = {
+                            // Экран создания поездки подключит другой участник команды.
+                        },
+                        onTripClick = { trip ->
+                            selectedTrip = trip
+                        },
+                    )
+                }
 
                 selectedTrip?.let { trip ->
                     AlertDialog(

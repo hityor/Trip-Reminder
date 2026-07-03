@@ -60,7 +60,7 @@ fun TripDetailsScreen(
         Spacer(modifier = Modifier.height(6.dp))
 
         Text(
-            text = trip.place,
+            text = trip.name,
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
         )
@@ -95,6 +95,7 @@ fun TripDetailsScreen(
                     StatusBadge(text = statusTitle(status), color = statusColor(status))
                 }
 
+                DetailRow(label = "Место", value = trip.place)
                 DetailRow(label = "Прибыть", value = formatDateTime(trip.arrivalTimeMillis))
                 DetailRow(label = "Выйти", value = formatDateTime(trip.leaveTimeMillis))
                 DetailRow(label = "В пути", value = minutesText(trip.routeDurationMinutes))

@@ -10,6 +10,7 @@ enum class TransportMode {
 data class Trip(
     val id: Long = 0,
     val place: String,
+    val name: String = place,
     val arrivalTimeMillis: Long,
     val transportMode: TransportMode,
     val routeDurationMinutes: Int,

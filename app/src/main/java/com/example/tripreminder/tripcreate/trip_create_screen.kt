@@ -27,19 +27,31 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.example.tripreminder.data.TransportMode
+import com.example.tripreminder.data.Trip
 import java.util.Calendar
 
 @Composable
 fun CreateScreen(
     onBack: () -> Unit,
+    onTripCreated: (Trip) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var tripName by remember { mutableStateOf("") }
     var place by remember { mutableStateOf("") }
     var tripDate by remember { mutableStateOf(Calendar.getInstance()) }
     var tripTime by remember { mutableStateOf(Calendar.getInstance()) }
-    var tripTransport by remember { mutableStateOf("") }
+    var tripTransport by remember { mutableStateOf<TransportMode?>(null) }
+    var routeDurationMinutes by remember { mutableStateOf("30") }
     var remindBeforeMinutes by remember { mutableStateOf("15") }
+    val parsedRouteDuration = routeDurationMinutes.toIntOrNull()
+    val parsedRemindBefore = remindBeforeMinutes.toIntOrNull()
+    val canSave = place.isNotBlank() &&
+        tripTransport != null &&
+        parsedRouteDuration != null &&
+        parsedRouteDuration > 0 &&
+        parsedRemindBefore != null &&
+        parsedRemindBefore >= 0
 
     Column(
         modifier = modifier
@@ -108,6 +120,17 @@ fun CreateScreen(
         )
 
         OutlinedTextField(
+            value = routeDurationMinutes,
+            onValueChange = { value ->
+                routeDurationMinutes = value.filter { it.isDigit() }.take(3)
+            },
+            label = { Text("Время в пути, мин") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        OutlinedTextField(
             value = remindBeforeMinutes,
             onValueChange = { value ->
                 remindBeforeMinutes = value.filter { it.isDigit() }.take(3)
@@ -119,11 +142,36 @@ fun CreateScreen(
         )
 
         Button(
-            onClick = { },
+            onClick = {
+                val transport = tripTransport ?: return@Button
+                val routeMinutes = parsedRouteDuration ?: return@Button
+                val remindMinutes = parsedRemindBefore ?: return@Button
+                onTripCreated(
+                    Trip(
+                        place = place.trim(),
+                        name = tripName.trim().ifBlank { place.trim() },
+                        arrivalTimeMillis = arrivalTimeMillis(tripDate, tripTime),
+                        transportMode = transport,
+                        routeDurationMinutes = routeMinutes,
+                        remindBeforeMinutes = remindMinutes,
+                    ),
+                )
+            },
             modifier = Modifier.fillMaxWidth(),
-            enabled = false,
+            enabled = canSave,
         ) {
             Text("Запланировать поездку")
         }
     }
 }
+
+private fun arrivalTimeMillis(date: Calendar, time: Calendar): Long =
+    Calendar.getInstance().apply {
+        set(Calendar.YEAR, date.get(Calendar.YEAR))
+        set(Calendar.MONTH, date.get(Calendar.MONTH))
+        set(Calendar.DAY_OF_MONTH, date.get(Calendar.DAY_OF_MONTH))
+        set(Calendar.HOUR_OF_DAY, time.get(Calendar.HOUR_OF_DAY))
+        set(Calendar.MINUTE, time.get(Calendar.MINUTE))
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis

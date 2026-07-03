@@ -163,7 +163,7 @@ private fun TripCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = trip.place,
+                        text = trip.name,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )

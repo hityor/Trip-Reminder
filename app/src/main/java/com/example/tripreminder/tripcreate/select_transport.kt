@@ -18,19 +18,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
+import com.example.tripreminder.data.TransportMode
 
 @Composable
 fun TransportField(
-    selectedTransport: String,
-    onTransportSelected: (String) -> Unit,
+    selectedTransport: TransportMode?,
+    onTransportSelected: (TransportMode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val transports = listOf("Общественный транспорт", "Такси", "Автомобиль", "Пешком")
+    val transports = TransportMode.entries
 
     Box(modifier = modifier) {
         OutlinedTextField(
-            value = selectedTransport,
+            value = selectedTransport?.let { transportTitle(it) }.orEmpty(),
             onValueChange = {},
             readOnly = true,
             label = { Text("Тип транспорта") },
@@ -54,7 +55,7 @@ fun TransportField(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            text = transport,
+                            text = transportTitle(transport),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -67,4 +68,11 @@ fun TransportField(
             }
         }
     }
+}
+
+private fun transportTitle(mode: TransportMode): String = when (mode) {
+    TransportMode.Car -> "Автомобиль"
+    TransportMode.PublicTransport -> "Общественный транспорт"
+    TransportMode.Walking -> "Пешком"
+    TransportMode.Taxi -> "Такси"
 }

@@ -32,7 +32,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             TripReminderTheme {
                 val nowMillis = remember { System.currentTimeMillis() }
-                val trips = remember(nowMillis) { demoTrips(nowMillis) }
+                val initialTrips = remember(nowMillis) { demoTrips(nowMillis) }
+                var trips by remember { mutableStateOf(initialTrips) }
+                var nextTripId by remember {
+                    mutableStateOf((initialTrips.maxOfOrNull { it.id } ?: 0L) + 1L)
+                }
                 val context = LocalContext.current
                 val notificationScheduler = remember(context) {
                     TripNotificationScheduler(context.applicationContext)
@@ -73,6 +77,11 @@ class MainActivity : ComponentActivity() {
                     isLoading -> LoadingScreen()
                     isCreatingTrip -> CreateScreen(
                         onBack = { isCreatingTrip = false },
+                        onTripCreated = { trip ->
+                            trips = trips + trip.copy(id = nextTripId)
+                            nextTripId += 1
+                            isCreatingTrip = false
+                        },
                     )
                     selectedTrip != null -> TripDetailsScreen(
                         trip = selectedTrip!!,

@@ -51,6 +51,7 @@ dependencies {
     implementation("com.yandex.android:maps.mobile:4.6.1-full")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
     implementation(libs.androidx.compose.ui.text)
+    implementation(libs.androidx.compose.foundation)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

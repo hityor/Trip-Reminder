@@ -7,46 +7,39 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.tripreminder.data.PlaceData
 
 @Composable
-fun SearchScreen(viewModel: SearchViewModel = viewModel()) {
+fun SearchScreen(
+    viewModel: SearchViewModel = viewModel(),
+    onPlaceSelected: (PlaceData) -> Unit
+) {
     var query by remember { mutableStateOf("") }
-
     val results by viewModel.searchResults.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
     Column(modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(
             value = query,
-            onValueChange = {
-                query = it
-                viewModel.searchPlace(it)
-            },
-            label = { Text("Куда отправляемся?") },
+            onValueChange = { query = it; viewModel.searchPlace(it) },
+            label = { Text("Куда поедем?") },
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        if (isLoading) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
 
-        if (isLoading) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
-
-        Column(modifier = Modifier.fillMaxWidth()) {
-            results.forEach { placeName ->
-                Text(
-                    text = placeName,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            query = placeName
-                        }
-                        .padding(vertical = 12.dp, horizontal = 4.dp)
-                )
-                HorizontalDivider()
-            }
+        results.forEach { place ->
+            Text(
+                text = place.address,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        query = place.address
+                        onPlaceSelected(place)
+                    }
+                    .padding(16.dp)
+            )
+            HorizontalDivider()
         }
     }
 }

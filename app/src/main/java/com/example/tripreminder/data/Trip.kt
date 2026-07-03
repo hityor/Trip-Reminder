@@ -2,17 +2,19 @@
 
 enum class TransportMode(val displayName: String) {
     Car("Автомобиль"),
-    PublicTransport("Общественный транспорт"),
-    Walking("Ходьба"),
-    Taxi("Такси"),
+    Walking("Ходьба")
 }
 
-
+data class PlaceData(
+    val address: String,
+    val latitude: Double,
+    val longitude: Double
+)
 
 data class Trip(
     val id: Long = 0,
     val name: String,
-    val place: String,
+    val place: PlaceData,
     val arrivalTimeMillis: Long,
     val transportMode: TransportMode,
     val routeDurationMinutes: Int,

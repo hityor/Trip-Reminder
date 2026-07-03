@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.example.tripreminder.data.PlaceData
 import java.util.Calendar
 
 @Composable
@@ -27,6 +28,9 @@ fun CreateScreen(modifier: Modifier = Modifier) {
     var tripDate by remember { mutableStateOf(Calendar.getInstance()) }
     var tripTime by remember { mutableStateOf(Calendar.getInstance()) }
     var tripTransport by remember { mutableStateOf("") }
+
+
+    var tripPlace by remember { mutableStateOf(PlaceData("", 0.0, 0.0)) }
     var notificationTime by remember { mutableStateOf(Calendar.getInstance()) }
 
     Column(
@@ -45,7 +49,11 @@ fun CreateScreen(modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxWidth()
         )
 
-        SearchScreen()
+        SearchScreen(
+            onPlaceSelected = { selectedPlace ->
+                tripPlace = selectedPlace
+            }
+        )
 
         DateField(
             selectedDate = tripDate,
@@ -74,13 +82,19 @@ fun CreateScreen(modifier: Modifier = Modifier) {
         )
 
         Button(
-            onClick = {/*Здесь можно будет сохранять по идее */},
+            onClick = {
+                val name = tripName
+                val date = tripDate
+                val time = tripTime
+                val transport = tripTransport
+                val address = tripPlace.address
+                val lat = tripPlace.latitude
+                val lon = tripPlace.longitude
+                val notifyTime = notificationTime
+            },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Запланировать поездку")
         }
     }
 }
-
-
-

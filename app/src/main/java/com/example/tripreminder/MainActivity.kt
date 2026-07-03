@@ -8,9 +8,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,6 +19,7 @@ import com.example.tripreminder.data.Trip
 import com.example.tripreminder.notifications.TripNotificationScheduler
 import com.example.tripreminder.ui.startup.LoadingScreen
 import com.example.tripreminder.ui.theme.TripReminderTheme
+import com.example.tripreminder.ui.trips.TripDetailsScreen
 import com.example.tripreminder.ui.trips.TripListScreen
 import kotlinx.coroutines.delay
 
@@ -69,10 +67,14 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                if (isLoading) {
-                    LoadingScreen()
-                } else {
-                    TripListScreen(
+                when {
+                    isLoading -> LoadingScreen()
+                    selectedTrip != null -> TripDetailsScreen(
+                        trip = selectedTrip!!,
+                        nowMillis = nowMillis,
+                        onBack = { selectedTrip = null },
+                    )
+                    else -> TripListScreen(
                         trips = trips,
                         nowMillis = nowMillis,
                         onAddTrip = {
@@ -80,19 +82,6 @@ class MainActivity : ComponentActivity() {
                         },
                         onTripClick = { trip ->
                             selectedTrip = trip
-                        },
-                    )
-                }
-
-                selectedTrip?.let { trip ->
-                    AlertDialog(
-                        onDismissRequest = { selectedTrip = null },
-                        title = { Text("Поездка") },
-                        text = { Text("Позже здесь откроется экран деталей: ${trip.place}") },
-                        confirmButton = {
-                            TextButton(onClick = { selectedTrip = null }) {
-                                Text("Понятно")
-                            }
                         },
                     )
                 }

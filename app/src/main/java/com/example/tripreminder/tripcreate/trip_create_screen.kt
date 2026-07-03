@@ -14,11 +14,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.tripreminder.data.TransportMode
 import com.example.tripreminder.data.Trip
 import java.util.Calendar
@@ -37,6 +41,7 @@ fun CreateScreen(
     onTripCreated: (Trip) -> Unit,
     placeSearchEnabled: Boolean,
     modifier: Modifier = Modifier,
+    routeDurationViewModel: RouteDurationViewModel = viewModel(),
 ) {
     var tripName by remember { mutableStateOf("") }
     var place by remember { mutableStateOf("") }
@@ -46,6 +51,7 @@ fun CreateScreen(
     var tripTransport by remember { mutableStateOf<TransportMode?>(null) }
     var routeDurationMinutes by remember { mutableStateOf("30") }
     var remindBeforeMinutes by remember { mutableStateOf("15") }
+    val routeDurationState by routeDurationViewModel.state.collectAsState()
     val parsedRouteDuration = routeDurationMinutes.toIntOrNull()
     val parsedRemindBefore = remindBeforeMinutes.toIntOrNull()
     val hasSelectedPlace = selectedPlace != null && place == selectedPlace?.address
@@ -55,6 +61,22 @@ fun CreateScreen(
         parsedRouteDuration > 0 &&
         parsedRemindBefore != null &&
         parsedRemindBefore >= 0
+
+    LaunchedEffect(selectedPlace, tripTransport) {
+        val destination = selectedPlace
+        val transport = tripTransport
+        if (destination != null && transport != null) {
+            routeDurationViewModel.calculateDuration(destination, transport)
+        } else {
+            routeDurationViewModel.clear()
+        }
+    }
+
+    LaunchedEffect(routeDurationState.durationMinutes) {
+        routeDurationState.durationMinutes?.let { durationMinutes ->
+            routeDurationMinutes = durationMinutes.toString()
+        }
+    }
 
     Column(
         modifier = modifier
@@ -151,6 +173,18 @@ fun CreateScreen(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth(),
         )
+
+        if (routeDurationState.isLoading) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+
+        routeDurationState.message?.let { message ->
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
         OutlinedTextField(
             value = remindBeforeMinutes,

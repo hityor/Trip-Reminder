@@ -45,6 +45,8 @@ fun CreateScreen(modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxWidth()
         )
 
+        SearchScreen()
+
         DateField(
             selectedDate = tripDate,
             onDateSelected = { tripDate = it },
@@ -72,7 +74,7 @@ fun CreateScreen(modifier: Modifier = Modifier) {
         )
 
         Button(
-            onClick = {},
+            onClick = {/*Здесь можно будет сохранять по идее */},
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Запланировать поездку")

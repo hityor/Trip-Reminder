@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
+import com.example.tripreminder.data.TransportMode
 
 @Composable
 fun TransportField(
@@ -26,7 +27,7 @@ fun TransportField(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val transports = listOf("Общественный транспорт", "Такси", "Автомобиль", "Ходьба")
+    val transports = TransportMode.entries.map {it.displayName}
 
     Box(modifier = modifier) {
         OutlinedTextField(

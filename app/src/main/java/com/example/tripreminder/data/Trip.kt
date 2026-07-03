@@ -1,14 +1,17 @@
 ﻿package com.example.tripreminder.data
 
-enum class TransportMode {
-    Car,
-    PublicTransport,
-    Walking,
-    Taxi,
+enum class TransportMode(val displayName: String) {
+    Car("Автомобиль"),
+    PublicTransport("Общественный транспорт"),
+    Walking("Ходьба"),
+    Taxi("Такси"),
 }
+
+
 
 data class Trip(
     val id: Long = 0,
+    val name: String,
     val place: String,
     val arrivalTimeMillis: Long,
     val transportMode: TransportMode,

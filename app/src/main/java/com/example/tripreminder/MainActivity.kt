@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.example.tripreminder.data.TransportMode
 import com.example.tripreminder.data.Trip
 import com.example.tripreminder.notifications.TripNotificationScheduler
+import com.example.tripreminder.tripcreate.CreateScreen
 import com.example.tripreminder.ui.startup.LoadingScreen
 import com.example.tripreminder.ui.theme.TripReminderTheme
 import com.example.tripreminder.ui.trips.TripDetailsScreen
@@ -38,6 +39,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 var isLoading by remember { mutableStateOf(true) }
+                var isCreatingTrip by remember { mutableStateOf(false) }
                 var selectedTrip by remember { mutableStateOf<Trip?>(null) }
                 var notificationsAllowed by remember {
                     mutableStateOf(notificationScheduler.canPostNotifications())
@@ -69,6 +71,9 @@ class MainActivity : ComponentActivity() {
 
                 when {
                     isLoading -> LoadingScreen()
+                    isCreatingTrip -> CreateScreen(
+                        onBack = { isCreatingTrip = false },
+                    )
                     selectedTrip != null -> TripDetailsScreen(
                         trip = selectedTrip!!,
                         nowMillis = nowMillis,
@@ -78,7 +83,7 @@ class MainActivity : ComponentActivity() {
                         trips = trips,
                         nowMillis = nowMillis,
                         onAddTrip = {
-                            // Экран создания поездки подключит другой участник команды.
+                            isCreatingTrip = true
                         },
                         onTripClick = { trip ->
                             selectedTrip = trip

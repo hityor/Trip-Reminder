@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.example.tripreminder.data.Trip
 import com.example.tripreminder.data.TripStorage
+import com.example.tripreminder.data.UserLocation
 import com.example.tripreminder.data.UserLocationProvider
 import com.example.tripreminder.notifications.TripNotificationScheduler
 import com.example.tripreminder.tripcreate.CreateScreen
@@ -62,6 +63,9 @@ class MainActivity : ComponentActivity() {
                 var locationAllowed by remember {
                     mutableStateOf(userLocationProvider.hasLocationPermission())
                 }
+                var currentUserLocation by remember { mutableStateOf<UserLocation?>(null) }
+                var isLocationReady by remember { mutableStateOf(locationAllowed) }
+                var locationStatusMessage by remember { mutableStateOf<String?>(null) }
 
                 fun updateTrips(updatedTrips: List<Trip>) {
                     trips = updatedTrips
@@ -105,6 +109,39 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                LaunchedEffect(locationAllowed) {
+                    if (!locationAllowed) {
+                        currentUserLocation = null
+                        isLocationReady = true
+                        locationStatusMessage = "Геолокация не разрешена. Маршрут считается от точки по умолчанию."
+                        return@LaunchedEffect
+                    }
+
+                    while (true) {
+                        val isFirstLookup = currentUserLocation == null
+                        if (isFirstLookup) {
+                            isLocationReady = false
+                            locationStatusMessage = "Определяем текущее местоположение..."
+                        } else {
+                            locationStatusMessage = "Обновляем текущее местоположение..."
+                        }
+
+                        val location = userLocationProvider.currentLocation(forceRefresh = true)
+                        if (location != null) {
+                            currentUserLocation = location
+                        }
+
+                        locationStatusMessage = if (currentUserLocation != null) {
+                            "Маршрут считается от текущего местоположения. Гео обновляется раз в минуту."
+                        } else {
+                            "Не удалось определить геолокацию. Маршрут считается от точки по умолчанию."
+                        }
+                        isLocationReady = true
+
+                        delay(LOCATION_REFRESH_INTERVAL_MILLIS)
+                    }
+                }
+
                 when {
                     isLoading -> LoadingScreen()
                     isCreatingTrip -> CreateScreen(
@@ -115,8 +152,9 @@ class MainActivity : ComponentActivity() {
                             isCreatingTrip = false
                         },
                         placeSearchEnabled = BuildConfig.MAPKIT_API_KEY.isNotBlank(),
-                        userLocationProvider = userLocationProvider,
-                        locationPermissionGranted = locationAllowed,
+                        userLocation = currentUserLocation,
+                        isLocationReady = isLocationReady,
+                        locationStatusMessage = locationStatusMessage,
                     )
                     editingTrip != null -> {
                         val tripToEdit = editingTrip!!
@@ -137,8 +175,9 @@ class MainActivity : ComponentActivity() {
                                 selectedTrip = updatedTrip
                             },
                             placeSearchEnabled = BuildConfig.MAPKIT_API_KEY.isNotBlank(),
-                            userLocationProvider = userLocationProvider,
-                            locationPermissionGranted = locationAllowed,
+                            userLocation = currentUserLocation,
+                            isLocationReady = isLocationReady,
+                            locationStatusMessage = locationStatusMessage,
                             initialTrip = tripToEdit,
                             screenTitle = "Редактирование поездки",
                             screenSubtitle = "Измени параметры маршрута и напоминания",
@@ -192,3 +231,5 @@ class MainActivity : ComponentActivity() {
         super.onStop()
     }
 }
+
+private const val LOCATION_REFRESH_INTERVAL_MILLIS = 60_000L

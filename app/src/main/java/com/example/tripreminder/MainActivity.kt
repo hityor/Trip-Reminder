@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.example.tripreminder.data.Trip
 import com.example.tripreminder.data.TripStorage
+import com.example.tripreminder.data.UserLocationProvider
 import com.example.tripreminder.notifications.TripNotificationScheduler
 import com.example.tripreminder.tripcreate.CreateScreen
 import com.example.tripreminder.ui.startup.LoadingScreen
@@ -37,6 +38,9 @@ class MainActivity : ComponentActivity() {
                 val tripStorage = remember(context) {
                     TripStorage(context.applicationContext)
                 }
+                val userLocationProvider = remember(context) {
+                    UserLocationProvider(context.applicationContext)
+                }
                 val initialTrips = remember(tripStorage) {
                     tripStorage.loadTrips().orEmpty()
                 }
@@ -55,23 +59,39 @@ class MainActivity : ComponentActivity() {
                 var notificationsAllowed by remember {
                     mutableStateOf(notificationScheduler.canPostNotifications())
                 }
+                var locationAllowed by remember {
+                    mutableStateOf(userLocationProvider.hasLocationPermission())
+                }
 
                 fun updateTrips(updatedTrips: List<Trip>) {
                     trips = updatedTrips
                     tripStorage.saveTrips(updatedTrips)
                 }
 
-                val notificationPermissionLauncher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.RequestPermission(),
-                ) { granted ->
-                    notificationsAllowed = granted
+                val permissionsLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestMultiplePermissions(),
+                ) { permissions ->
+                    notificationsAllowed = notificationScheduler.canPostNotifications()
+                    locationAllowed = userLocationProvider.hasLocationPermission() ||
+                        permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                        permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
                 }
 
                 LaunchedEffect(Unit) {
                     notificationScheduler.createNotificationChannel()
 
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationsAllowed) {
-                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    val permissionsToRequest = buildList {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationsAllowed) {
+                            add(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                        if (!locationAllowed) {
+                            add(Manifest.permission.ACCESS_FINE_LOCATION)
+                            add(Manifest.permission.ACCESS_COARSE_LOCATION)
+                        }
+                    }
+
+                    if (permissionsToRequest.isNotEmpty()) {
+                        permissionsLauncher.launch(permissionsToRequest.toTypedArray())
                     }
 
                     delay(900)
@@ -95,6 +115,8 @@ class MainActivity : ComponentActivity() {
                             isCreatingTrip = false
                         },
                         placeSearchEnabled = BuildConfig.MAPKIT_API_KEY.isNotBlank(),
+                        userLocationProvider = userLocationProvider,
+                        locationPermissionGranted = locationAllowed,
                     )
                     editingTrip != null -> {
                         val tripToEdit = editingTrip!!
@@ -115,6 +137,8 @@ class MainActivity : ComponentActivity() {
                                 selectedTrip = updatedTrip
                             },
                             placeSearchEnabled = BuildConfig.MAPKIT_API_KEY.isNotBlank(),
+                            userLocationProvider = userLocationProvider,
+                            locationPermissionGranted = locationAllowed,
                             initialTrip = tripToEdit,
                             screenTitle = "Редактирование поездки",
                             screenSubtitle = "Измени параметры маршрута и напоминания",

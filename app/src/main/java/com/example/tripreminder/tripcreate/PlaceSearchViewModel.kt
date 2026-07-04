@@ -2,6 +2,7 @@ package com.example.tripreminder.tripcreate
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.tripreminder.data.UserLocation
 import com.yandex.mapkit.geometry.BoundingBox
 import com.yandex.mapkit.geometry.Geometry
 import com.yandex.mapkit.geometry.Point
@@ -32,7 +33,7 @@ class PlaceSearchViewModel : ViewModel() {
     private val _errorText = MutableStateFlow<String?>(null)
     val errorText: StateFlow<String?> = _errorText.asStateFlow()
 
-    fun searchPlace(query: String) {
+    fun searchPlace(query: String, userLocation: UserLocation?) {
         if (query.length < MIN_QUERY_LENGTH) {
             clearResults()
             return
@@ -52,7 +53,7 @@ class PlaceSearchViewModel : ViewModel() {
 
             searchSession = searchManager.submit(
                 query,
-                KRASNOYARSK_SEARCH_AREA,
+                searchGeometry(userLocation),
                 options,
                 searchListener(requestId),
             )
@@ -133,13 +134,18 @@ class PlaceSearchViewModel : ViewModel() {
         _isLoading.value = false
     }
 
+    private fun searchGeometry(userLocation: UserLocation?): Geometry =
+        userLocation?.let { location ->
+            Geometry.fromPoint(Point(location.latitude, location.longitude))
+        } ?: WORLD_SEARCH_AREA
+
     companion object {
         private const val MIN_QUERY_LENGTH = 3
         private const val SEARCH_TIMEOUT_MILLIS = 8_000L
-        private val KRASNOYARSK_SEARCH_AREA = Geometry.fromBoundingBox(
+        private val WORLD_SEARCH_AREA = Geometry.fromBoundingBox(
             BoundingBox(
-                Point(55.70, 92.10),
-                Point(56.25, 93.40),
+                Point(-85.0, -180.0),
+                Point(85.0, 180.0),
             ),
         )
     }

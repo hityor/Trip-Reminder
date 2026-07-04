@@ -3,6 +3,7 @@ package com.example.tripreminder.tripcreate
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.tripreminder.data.TransportMode
+import com.example.tripreminder.data.UserLocation
 import com.yandex.mapkit.RequestPoint
 import com.yandex.mapkit.RequestPointType
 import com.yandex.mapkit.directions.DirectionsFactory
@@ -34,7 +35,11 @@ class RouteDurationViewModel : ViewModel() {
     private val _state = MutableStateFlow(RouteDurationState())
     val state: StateFlow<RouteDurationState> = _state.asStateFlow()
 
-    fun calculateDuration(destination: PlaceSearchResult, transportMode: TransportMode) {
+    fun calculateDuration(
+        destination: PlaceSearchResult,
+        transportMode: TransportMode,
+        userLocation: UserLocation?,
+    ) {
         cancelActiveRequest()
         val currentRequestId = ++requestId
 
@@ -46,8 +51,11 @@ class RouteDurationViewModel : ViewModel() {
         _state.value = RouteDurationState(isLoading = true)
         startTimeout(currentRequestId)
 
+        val startPoint = userLocation?.let { location ->
+            Point(location.latitude, location.longitude)
+        } ?: KRASNOYARSK_START_POINT
         val points = listOf(
-            RequestPoint(KRASNOYARSK_START_POINT, RequestPointType.WAYPOINT, null, null),
+            RequestPoint(startPoint, RequestPointType.WAYPOINT, null, null),
             RequestPoint(Point(destination.latitude, destination.longitude), RequestPointType.WAYPOINT, null, null),
         )
 

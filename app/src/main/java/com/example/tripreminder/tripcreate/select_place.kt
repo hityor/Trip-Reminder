@@ -9,12 +9,14 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.tripreminder.data.UserLocation
 
 @Composable
 fun PlaceSearchField(
@@ -23,6 +25,7 @@ fun PlaceSearchField(
     onPlaceSelected: (PlaceSearchResult) -> Unit,
     searchEnabled: Boolean,
     hasSelectedPlace: Boolean,
+    userLocation: UserLocation?,
     modifier: Modifier = Modifier,
     viewModel: PlaceSearchViewModel = viewModel(),
 ) {
@@ -36,14 +39,19 @@ fun PlaceSearchField(
         place.length >= 3 &&
         results.isEmpty()
 
+    LaunchedEffect(searchEnabled, userLocation, place, hasSelectedPlace) {
+        if (searchEnabled && !hasSelectedPlace && place.length >= 3) {
+            viewModel.searchPlace(place, userLocation)
+        } else if (!hasSelectedPlace) {
+            viewModel.clearResults()
+        }
+    }
+
     Column(modifier = modifier.fillMaxWidth()) {
         OutlinedTextField(
             value = place,
             onValueChange = { value ->
                 onPlaceChange(value)
-                if (searchEnabled) {
-                    viewModel.searchPlace(value)
-                }
             },
             label = { Text("Место назначения") },
             singleLine = true,

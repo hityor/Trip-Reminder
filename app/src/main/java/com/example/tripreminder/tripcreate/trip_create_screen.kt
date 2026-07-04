@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.tripreminder.data.TransportMode
 import com.example.tripreminder.data.Trip
+import com.example.tripreminder.data.UserLocation
+import com.example.tripreminder.data.UserLocationProvider
 import java.util.Calendar
 
 @Composable
@@ -45,6 +47,8 @@ fun CreateScreen(
     screenTitle: String = "Новая поездка",
     screenSubtitle: String = "Параметры маршрута и напоминания",
     submitButtonText: String = "Запланировать поездку",
+    userLocationProvider: UserLocationProvider? = null,
+    locationPermissionGranted: Boolean = false,
     routeDurationViewModel: RouteDurationViewModel = viewModel(),
 ) {
     val initialPlace = remember(initialTrip) {
@@ -79,6 +83,13 @@ fun CreateScreen(
         mutableStateOf(initialTrip?.remindBeforeMinutes?.toString() ?: "15")
     }
     val routeDurationState by routeDurationViewModel.state.collectAsState()
+    var userLocation by remember { mutableStateOf<UserLocation?>(null) }
+    var isLocationReady by remember(userLocationProvider, locationPermissionGranted) {
+        mutableStateOf(userLocationProvider == null || !locationPermissionGranted)
+    }
+    var locationStatusMessage by remember(userLocationProvider, locationPermissionGranted) {
+        mutableStateOf<String?>(null)
+    }
     val parsedRouteDuration = routeDurationMinutes.toIntOrNull()
     val parsedRemindBefore = remindBeforeMinutes.toIntOrNull()
     val hasSelectedPlace = selectedPlace != null && place == selectedPlace?.address
@@ -89,15 +100,48 @@ fun CreateScreen(
         parsedRemindBefore != null &&
         parsedRemindBefore >= 0
 
-    LaunchedEffect(selectedPlace, tripTransport) {
+    LaunchedEffect(userLocationProvider, locationPermissionGranted) {
+        if (userLocationProvider == null) {
+            userLocation = null
+            locationStatusMessage = null
+            isLocationReady = true
+            return@LaunchedEffect
+        }
+
+        if (!locationPermissionGranted) {
+            userLocation = null
+            locationStatusMessage = "Геолокация не разрешена. Маршрут считается от точки по умолчанию."
+            isLocationReady = true
+            return@LaunchedEffect
+        }
+
+        isLocationReady = false
+        locationStatusMessage = "Определяем текущее местоположение..."
+        val location = userLocationProvider.currentLocation()
+        userLocation = location
+        locationStatusMessage = if (location != null) {
+            "Маршрут считается от текущего местоположения."
+        } else {
+            "Не удалось определить геолокацию. Маршрут считается от точки по умолчанию."
+        }
+        isLocationReady = true
+    }
+
+    LaunchedEffect(selectedPlace, tripTransport, userLocation, isLocationReady) {
         val destination = selectedPlace
         val transport = tripTransport
         val shouldCalculateDuration = initialTrip == null ||
             destination?.address != initialTrip.place ||
             transport != initialTrip.transportMode
+        val shouldWaitForLocation = !isLocationReady && transport != TransportMode.PublicTransport
+
+        if (shouldWaitForLocation) {
+            routeDurationViewModel.clear()
+            return@LaunchedEffect
+        }
 
         if (destination != null && transport != null && shouldCalculateDuration) {
-            routeDurationViewModel.calculateDuration(destination, transport)
+            routeDurationViewModel.calculateDuration(destination, transport, userLocation)
         } else {
             routeDurationViewModel.clear()
         }
@@ -158,6 +202,7 @@ fun CreateScreen(
             },
             searchEnabled = placeSearchEnabled,
             hasSelectedPlace = hasSelectedPlace,
+            userLocation = userLocation,
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -193,6 +238,14 @@ fun CreateScreen(
             onTransportSelected = { tripTransport = it },
             modifier = Modifier.fillMaxWidth(),
         )
+
+        locationStatusMessage?.let { message ->
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
         OutlinedTextField(
             value = routeDurationMinutes,

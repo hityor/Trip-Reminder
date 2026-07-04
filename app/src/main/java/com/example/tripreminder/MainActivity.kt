@@ -14,8 +14,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import com.example.tripreminder.data.TransportMode
 import com.example.tripreminder.data.Trip
+import com.example.tripreminder.data.TripStorage
 import com.example.tripreminder.notifications.TripNotificationScheduler
 import com.example.tripreminder.tripcreate.CreateScreen
 import com.example.tripreminder.ui.startup.LoadingScreen
@@ -32,13 +32,18 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             TripReminderTheme {
+                val context = LocalContext.current
                 val nowMillis = remember { System.currentTimeMillis() }
-                val initialTrips = remember(nowMillis) { demoTrips(nowMillis) }
+                val tripStorage = remember(context) {
+                    TripStorage(context.applicationContext)
+                }
+                val initialTrips = remember(tripStorage) {
+                    tripStorage.loadTrips().orEmpty()
+                }
                 var trips by remember { mutableStateOf(initialTrips) }
                 var nextTripId by remember {
                     mutableStateOf((initialTrips.maxOfOrNull { it.id } ?: 0L) + 1L)
                 }
-                val context = LocalContext.current
                 val notificationScheduler = remember(context) {
                     TripNotificationScheduler(context.applicationContext)
                 }
@@ -48,6 +53,11 @@ class MainActivity : ComponentActivity() {
                 var selectedTrip by remember { mutableStateOf<Trip?>(null) }
                 var notificationsAllowed by remember {
                     mutableStateOf(notificationScheduler.canPostNotifications())
+                }
+
+                fun updateTrips(updatedTrips: List<Trip>) {
+                    trips = updatedTrips
+                    tripStorage.saveTrips(updatedTrips)
                 }
 
                 val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -79,7 +89,7 @@ class MainActivity : ComponentActivity() {
                     isCreatingTrip -> CreateScreen(
                         onBack = { isCreatingTrip = false },
                         onTripCreated = { trip ->
-                            trips = trips + trip.copy(id = nextTripId)
+                            updateTrips(trips + trip.copy(id = nextTripId))
                             nextTripId += 1
                             isCreatingTrip = false
                         },
@@ -118,46 +128,4 @@ class MainActivity : ComponentActivity() {
         }
         super.onStop()
     }
-}
-
-private fun demoTrips(nowMillis: Long): List<Trip> {
-    val minute = 60_000L
-    return listOf(
-        Trip(
-            id = 1,
-            place = "Аэропорт Красноярск",
-            arrivalTimeMillis = nowMillis + 240 * minute,
-            transportMode = TransportMode.Car,
-            routeDurationMinutes = 45,
-            remindBeforeMinutes = 15,
-            safetyPercent = 10,
-        ),
-        Trip(
-            id = 2,
-            place = "Железнодорожный вокзал",
-            arrivalTimeMillis = nowMillis + 90 * minute,
-            transportMode = TransportMode.PublicTransport,
-            routeDurationMinutes = 45,
-            remindBeforeMinutes = 10,
-            safetyPercent = 10,
-        ),
-        Trip(
-            id = 3,
-            place = "Университет",
-            arrivalTimeMillis = nowMillis + 20 * minute,
-            transportMode = TransportMode.Walking,
-            routeDurationMinutes = 18,
-            remindBeforeMinutes = 5,
-            safetyPercent = 10,
-        ),
-        Trip(
-            id = 4,
-            place = "Кинотеатр",
-            arrivalTimeMillis = nowMillis - 60 * minute,
-            transportMode = TransportMode.Taxi,
-            routeDurationMinutes = 25,
-            remindBeforeMinutes = 10,
-            safetyPercent = 10,
-        ),
-    )
 }

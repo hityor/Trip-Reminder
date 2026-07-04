@@ -35,6 +35,7 @@ import com.example.tripreminder.data.TransportMode
 import com.example.tripreminder.data.Trip
 import com.example.tripreminder.data.UserLocation
 import com.example.tripreminder.data.UserLocationProvider
+import kotlinx.coroutines.delay
 import java.util.Calendar
 
 @Composable
@@ -66,7 +67,6 @@ fun CreateScreen(
             }
         }
     }
-    var tripName by remember(initialTrip) { mutableStateOf(initialTrip?.name.orEmpty()) }
     var place by remember(initialTrip) { mutableStateOf(initialTrip?.place.orEmpty()) }
     var selectedPlace by remember(initialTrip) { mutableStateOf(initialPlace) }
     var tripDate by remember(initialTrip) {
@@ -115,16 +115,29 @@ fun CreateScreen(
             return@LaunchedEffect
         }
 
-        isLocationReady = false
-        locationStatusMessage = "Определяем текущее местоположение..."
-        val location = userLocationProvider.currentLocation()
-        userLocation = location
-        locationStatusMessage = if (location != null) {
-            "Маршрут считается от текущего местоположения."
-        } else {
-            "Не удалось определить геолокацию. Маршрут считается от точки по умолчанию."
+        while (true) {
+            val isFirstLookup = userLocation == null
+            if (isFirstLookup) {
+                isLocationReady = false
+                locationStatusMessage = "Определяем текущее местоположение..."
+            } else {
+                locationStatusMessage = "Обновляем текущее местоположение..."
+            }
+
+            val location = userLocationProvider.currentLocation(forceRefresh = true)
+            if (location != null) {
+                userLocation = location
+            }
+
+            locationStatusMessage = if (userLocation != null) {
+                "Маршрут считается от текущего местоположения. Гео обновляется раз в минуту."
+            } else {
+                "Не удалось определить геолокацию. Маршрут считается от точки по умолчанию."
+            }
+            isLocationReady = true
+
+            delay(LOCATION_REFRESH_INTERVAL_MILLIS)
         }
-        isLocationReady = true
     }
 
     LaunchedEffect(selectedPlace, tripTransport, userLocation, isLocationReady) {
@@ -181,15 +194,6 @@ fun CreateScreen(
         }
 
         Spacer(modifier = Modifier.height(2.dp))
-
-        OutlinedTextField(
-            value = tripName,
-            onValueChange = { tripName = it },
-            label = { Text("Название поездки") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-            modifier = Modifier.fillMaxWidth(),
-        )
 
         PlaceSearchField(
             place = place,
@@ -291,7 +295,7 @@ fun CreateScreen(
                     Trip(
                         id = initialTrip?.id ?: 0L,
                         place = destination.address,
-                        name = tripName.trim().ifBlank { destination.address },
+                        name = destination.address,
                         arrivalTimeMillis = arrivalTimeMillis(tripDate, tripTime),
                         transportMode = transport,
                         routeDurationMinutes = routeMinutes,
@@ -325,3 +329,5 @@ private fun calendarFromMillis(millis: Long): Calendar =
     Calendar.getInstance().apply {
         timeInMillis = millis
     }
+
+private const val LOCATION_REFRESH_INTERVAL_MILLIS = 60_000L

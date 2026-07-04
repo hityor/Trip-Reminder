@@ -29,23 +29,25 @@ class UserLocationProvider(private val context: Context) {
             ) == PackageManager.PERMISSION_GRANTED
 
     @SuppressLint("MissingPermission")
-    suspend fun currentLocation(): UserLocation? {
+    suspend fun currentLocation(forceRefresh: Boolean = false): UserLocation? {
         if (!hasLocationPermission()) return null
 
         val lastKnownLocation = bestLastKnownLocation()
-        if (lastKnownLocation != null) {
+        if (!forceRefresh && lastKnownLocation != null) {
             return lastKnownLocation.toUserLocation()
         }
 
         val provider = bestEnabledProvider() ?: return null
 
-        return withTimeoutOrNull(LOCATION_TIMEOUT_MILLIS) {
+        val freshLocation = withTimeoutOrNull(LOCATION_TIMEOUT_MILLIS) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 currentLocationFromProvider(provider)
             } else {
                 singleLocationUpdate(provider)
             }
         }
+
+        return freshLocation ?: lastKnownLocation?.toUserLocation()
     }
 
     @SuppressLint("MissingPermission")

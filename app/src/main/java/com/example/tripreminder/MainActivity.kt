@@ -50,6 +50,7 @@ class MainActivity : ComponentActivity() {
 
                 var isLoading by remember { mutableStateOf(true) }
                 var isCreatingTrip by remember { mutableStateOf(false) }
+                var editingTrip by remember { mutableStateOf<Trip?>(null) }
                 var selectedTrip by remember { mutableStateOf<Trip?>(null) }
                 var notificationsAllowed by remember {
                     mutableStateOf(notificationScheduler.canPostNotifications())
@@ -95,10 +96,48 @@ class MainActivity : ComponentActivity() {
                         },
                         placeSearchEnabled = BuildConfig.MAPKIT_API_KEY.isNotBlank(),
                     )
+                    editingTrip != null -> {
+                        val tripToEdit = editingTrip!!
+                        CreateScreen(
+                            onBack = {
+                                editingTrip = null
+                                selectedTrip = tripToEdit
+                            },
+                            onTripCreated = { trip ->
+                                val updatedTrip = trip.copy(id = tripToEdit.id)
+                                notificationScheduler.cancelTripNotification(tripToEdit)
+                                updateTrips(
+                                    trips.map { currentTrip ->
+                                        if (currentTrip.id == tripToEdit.id) updatedTrip else currentTrip
+                                    },
+                                )
+                                editingTrip = null
+                                selectedTrip = updatedTrip
+                            },
+                            placeSearchEnabled = BuildConfig.MAPKIT_API_KEY.isNotBlank(),
+                            initialTrip = tripToEdit,
+                            screenTitle = "Редактирование поездки",
+                            screenSubtitle = "Измени параметры маршрута и напоминания",
+                            submitButtonText = "Сохранить изменения",
+                        )
+                    }
                     selectedTrip != null -> TripDetailsScreen(
                         trip = selectedTrip!!,
                         nowMillis = nowMillis,
                         onBack = { selectedTrip = null },
+                        onEdit = {
+                            selectedTrip?.let { trip ->
+                                editingTrip = trip
+                                selectedTrip = null
+                            }
+                        },
+                        onDelete = {
+                            selectedTrip?.let { trip ->
+                                notificationScheduler.cancelTripNotification(trip)
+                                updateTrips(trips.filterNot { currentTrip -> currentTrip.id == trip.id })
+                                selectedTrip = null
+                            }
+                        },
                     )
                     else -> TripListScreen(
                         trips = trips,

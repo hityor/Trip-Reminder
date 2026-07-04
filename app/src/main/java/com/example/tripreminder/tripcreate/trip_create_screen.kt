@@ -41,16 +41,43 @@ fun CreateScreen(
     onTripCreated: (Trip) -> Unit,
     placeSearchEnabled: Boolean,
     modifier: Modifier = Modifier,
+    initialTrip: Trip? = null,
+    screenTitle: String = "Новая поездка",
+    screenSubtitle: String = "Параметры маршрута и напоминания",
+    submitButtonText: String = "Запланировать поездку",
     routeDurationViewModel: RouteDurationViewModel = viewModel(),
 ) {
-    var tripName by remember { mutableStateOf("") }
-    var place by remember { mutableStateOf("") }
-    var selectedPlace by remember { mutableStateOf<PlaceSearchResult?>(null) }
-    var tripDate by remember { mutableStateOf(Calendar.getInstance()) }
-    var tripTime by remember { mutableStateOf(Calendar.getInstance()) }
-    var tripTransport by remember { mutableStateOf<TransportMode?>(null) }
-    var routeDurationMinutes by remember { mutableStateOf("30") }
-    var remindBeforeMinutes by remember { mutableStateOf("15") }
+    val initialPlace = remember(initialTrip) {
+        initialTrip?.let { trip ->
+            val latitude = trip.latitude
+            val longitude = trip.longitude
+            if (latitude != null && longitude != null) {
+                PlaceSearchResult(
+                    address = trip.place,
+                    latitude = latitude,
+                    longitude = longitude,
+                )
+            } else {
+                null
+            }
+        }
+    }
+    var tripName by remember(initialTrip) { mutableStateOf(initialTrip?.name.orEmpty()) }
+    var place by remember(initialTrip) { mutableStateOf(initialTrip?.place.orEmpty()) }
+    var selectedPlace by remember(initialTrip) { mutableStateOf(initialPlace) }
+    var tripDate by remember(initialTrip) {
+        mutableStateOf(initialTrip?.arrivalTimeMillis?.let(::calendarFromMillis) ?: Calendar.getInstance())
+    }
+    var tripTime by remember(initialTrip) {
+        mutableStateOf(initialTrip?.arrivalTimeMillis?.let(::calendarFromMillis) ?: Calendar.getInstance())
+    }
+    var tripTransport by remember(initialTrip) { mutableStateOf(initialTrip?.transportMode) }
+    var routeDurationMinutes by remember(initialTrip) {
+        mutableStateOf(initialTrip?.routeDurationMinutes?.toString() ?: "30")
+    }
+    var remindBeforeMinutes by remember(initialTrip) {
+        mutableStateOf(initialTrip?.remindBeforeMinutes?.toString() ?: "15")
+    }
     val routeDurationState by routeDurationViewModel.state.collectAsState()
     val parsedRouteDuration = routeDurationMinutes.toIntOrNull()
     val parsedRemindBefore = remindBeforeMinutes.toIntOrNull()
@@ -65,7 +92,11 @@ fun CreateScreen(
     LaunchedEffect(selectedPlace, tripTransport) {
         val destination = selectedPlace
         val transport = tripTransport
-        if (destination != null && transport != null) {
+        val shouldCalculateDuration = initialTrip == null ||
+            destination?.address != initialTrip.place ||
+            transport != initialTrip.transportMode
+
+        if (destination != null && transport != null && shouldCalculateDuration) {
             routeDurationViewModel.calculateDuration(destination, transport)
         } else {
             routeDurationViewModel.clear()
@@ -94,12 +125,12 @@ fun CreateScreen(
 
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = "Новая поездка",
+                text = screenTitle,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "Параметры маршрута и напоминания",
+                text = screenSubtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -205,12 +236,14 @@ fun CreateScreen(
                 val remindMinutes = parsedRemindBefore ?: return@Button
                 onTripCreated(
                     Trip(
+                        id = initialTrip?.id ?: 0L,
                         place = destination.address,
                         name = tripName.trim().ifBlank { destination.address },
                         arrivalTimeMillis = arrivalTimeMillis(tripDate, tripTime),
                         transportMode = transport,
                         routeDurationMinutes = routeMinutes,
                         remindBeforeMinutes = remindMinutes,
+                        safetyPercent = initialTrip?.safetyPercent ?: 10,
                         latitude = destination.latitude,
                         longitude = destination.longitude,
                     ),
@@ -219,7 +252,7 @@ fun CreateScreen(
             modifier = Modifier.fillMaxWidth(),
             enabled = canSave,
         ) {
-            Text("Запланировать поездку")
+            Text(submitButtonText)
         }
     }
 }
@@ -234,3 +267,8 @@ private fun arrivalTimeMillis(date: Calendar, time: Calendar): Long =
         set(Calendar.SECOND, 0)
         set(Calendar.MILLISECOND, 0)
     }.timeInMillis
+
+private fun calendarFromMillis(millis: Long): Calendar =
+    Calendar.getInstance().apply {
+        timeInMillis = millis
+    }

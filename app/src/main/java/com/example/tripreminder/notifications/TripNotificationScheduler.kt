@@ -68,6 +68,13 @@ class TripNotificationScheduler(private val context: Context) {
             .forEach { trip -> showTripNotification(trip) }
     }
 
+    fun cancelTripNotification(trip: Trip) {
+        val pendingIntent = pendingIntentForTrip(trip)
+        context.getSystemService(AlarmManager::class.java).cancel(pendingIntent)
+        pendingIntent.cancel()
+        NotificationManagerCompat.from(context).cancel(trip.id.toInt())
+    }
+
     fun showTripNotification(trip: Trip) {
         showTripNotification(
             tripId = trip.id,

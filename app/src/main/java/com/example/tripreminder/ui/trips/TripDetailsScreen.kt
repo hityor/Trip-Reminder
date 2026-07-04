@@ -41,6 +41,8 @@ fun TripDetailsScreen(
     trip: Trip,
     nowMillis: Long,
     onBack: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val status = trip.statusAt(nowMillis)
@@ -117,19 +119,24 @@ fun TripDetailsScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Spacer(modifier = Modifier.height(10.dp))
+            OutlinedButton(
+                onClick = onDelete,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Удалить поездку")
+            }
         } else {
             Button(
-                onClick = { },
+                onClick = onEdit,
                 modifier = Modifier.fillMaxWidth(),
-                enabled = false,
             ) {
                 Text("Изменить поездку")
             }
             Spacer(modifier = Modifier.height(10.dp))
             OutlinedButton(
-                onClick = { },
+                onClick = onDelete,
                 modifier = Modifier.fillMaxWidth(),
-                enabled = false,
             ) {
                 Text("Удалить поездку")
             }
